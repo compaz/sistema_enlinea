@@ -1,0 +1,129 @@
+<style type='text/css'>
+.normal {
+  width: 800px;
+  border: 1px solid #050505;
+  border-collapse: collapse;
+}
+.normal th, .normal td {
+  border: 1px solid #050505;
+}
+
+.chronoform { display:none; }
+</style>
+<?php
+
+	include("sistema_enlinea/traducefecha.php"); 
+
+	function ConsultarSaldoCliente(){
+
+	$db =&JFactory::getDBO();
+	$cedula =&JRequest::getString('cedula');
+	$nroCon =&JRequest::getString('nro');
+	$name =&JRequest::getString('name');
+	$nroref =&JRequest::getString('ref');
+	
+	if($nroCon)
+	$str2 = " OR a.nrocontrato = '$nroCon' ";
+	if($name)
+	$str3 = " OR a.name LIKE '%$name%' ";
+	if($nroref)
+	$str4 = " OR c.cmv_pagcsv_ref = '$nroref' ";
+
+	$sql = "SELECT 
+	a.name AS nombre, 
+	a.tax_code AS cedula,
+	a.saldo, 
+	c.cmv_pagcsv_ref AS ref, 
+	c.cmv_monto * c.cmv_tipomov AS monto, 
+	cmv_tipopago AS descripcion, 
+	DATE_FORMAT( c.cmv_fecha, '%m/%d/%y') AS fecha,
+	d.desc 
+	FROM bamboo_clients a
+	LEFT OUTER JOIN cpz_cli_mov c ON c.cmv_cli_tax_code = a.tax_code
+	INNER JOIN cpz_plan d ON pln_id = a.plan
+	WHERE a.tax_code =  '$cedula' ".$str2." ".$str3.
+	" ".$str4." ORDER BY c.cmv_fecha DESC"; 
+	
+	$db->setQuery( $sql );
+	$array = $db->loadRowList(); 
+	//print_r($array);
+	//echo $sql;
+	
+	if ($array[0] != NULL){
+	
+?>
+<table width="200" border="1" class="normal">
+  <tr>
+    <td colspan="5" align="center" bgcolor="#CCCCCC" class="normal"><strong>Datos del cliente</strong></td>
+  </tr>
+  <tr>
+    <td width="54">Nombre</td>
+    <td colspan="4"><?php echo $array[0][0]; ?></td>
+  </tr>
+  <tr>
+    <td >Cedula</td>
+    <td colspan="2"><?php echo $array[0][1]; ?></td>
+    <td align="right">Plan:</td>
+    <td align="center"><?php echo $array[0][7]; ?></td>
+  </tr>
+  <tr>
+    <td>Saldo</td>
+    <td colspan="2"><?php echo "<strong>".$array[0][2].",00 BsF.</strong><br>(Con saldo igual o mayor a cero tendra conexión)"; ?></td>
+    <td align="right">Estado del abonado:   </td>
+    <td align="center" bgcolor=<?php echo $array[0][2]>=0?"#00FF00":"#FF0000"; ?>><h4><?php echo $array[0][2]>=0?"AL DIA":"CORTADO"; ?></h4></td>
+  </tr>
+  <tr>
+    <td colspan="5" align="center" bgcolor="#CCCCCC"><strong>Detalle de pagos y cobros</strong></td>
+  </tr>
+  <tr>
+    <td align="center">Nº</td>
+    <td align="center" width="164"><strong>Referencia</strong></td>
+    <td align="center" width="141"><strong>Monto</strong></td>
+    <td align="center" width="312"><strong>Descripción</strong></td>
+    <td align="center" width="101" ><strong>Fecha</strong></td>
+  </tr>
+  <?php // while($row){
+	  $i=1;
+	  foreach ($array as &$row) {
+	   ?>
+  <tr bgcolor=<?php echo $i%2?"#EEEEEE":"#FFFFFF"; ?>>
+  	<td align="center"  ><?php echo $i; ?></td>
+    <td><strong><?php echo $row[3] == ""?"-------------":$row[3]." **"; ?></strong></td>
+    <td align="right"><?php echo $row[4]; ?></td>
+    <td align="center"><?php 
+	
+	if($row[5] == "DMS")
+		echo "Cobro Mensual del Servicio, mes ".traduceMes($row[6]); 
+	if($row[5] == "DP")
+		echo "Deposito Bancario."; 
+	if($row[5] == "PTB")
+		echo "Deposito desde Otro Banco."; 
+	if($row[5] == "RMS")
+		echo "Ajuste de Saldo a su favor."; 
+	
+	?></td>
+    <td align="center"><?php echo traducefecha($row[6]); ?></td>
+  </tr>
+  <tr>
+  <?php /// $row = $db->loadRow(); 
+  $i++;
+  }
+  }
+   ?>
+    <td colspan="5"><a href="www.compaz.com.ve">Compaz Comunicaciones.</a> Para reclamos o dudas escribanos a contacto@compaz.com.ve</td>
+  </tr>
+  <tr>
+    <td colspan="5">** Referencias bancarias reportadas por el cliente, para reportar otro pago haga <a href="http://www.compaz.com.ve/index.php?option=com_chronoforms&amp;chronoform=sdf&amp;tmpl=component">click aquí</a></td>
+  </tr>
+</table>
+
+<?php 
+/*
+}else{
+ 		echo "<script>alert('ERROR: CEDULA INVALIDA')</script>";
+		$form->validation_errros['cedula'] = "ESTA CEDULA NO EXISTE, POR FAVOR REVISAR CEDULA 	VALIDA";
+	return false;
+}*/
+
+	}
+?>
